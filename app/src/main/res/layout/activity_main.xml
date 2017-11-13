@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="taras.alarm.MainActivity"
+    android:orientation="vertical">
+    <Chronometer
+        android:typeface="monospace"
+        android:gravity="center_horizontal"
+        android:layout_margin="10dp"
+        android:id="@+id/textview_time"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="30sp"/>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btn_start"
+            android:text="start"
+            android:layout_width="0dp"
+            android:layout_weight="2"
+            android:layout_height="50dp" />
+        <Button
+            android:id="@+id/btn_clear"
+            android:text="clear"
+            android:background="@drawable/round_button"
+            android:layout_width="50dp"
+            android:layout_height="50dp" />
+        <Button
+            android:id="@+id/btn_stop"
+            android:text="stop"
+            android:layout_width="0dp"
+            android:layout_weight="2"
+            android:layout_height="50dp" />
+    </LinearLayout>
+
+</LinearLayout>
