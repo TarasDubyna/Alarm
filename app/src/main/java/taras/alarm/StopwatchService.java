@@ -37,9 +37,9 @@ public class StopwatchService extends Service {
     public final static String TIME_BUFF_LONG = "service_time_buff";
 
 
-    public final static String STOPWATCH_START = "service_stopwatch_start";
     public final static String STOPWATCH_PAUSED = "service_stopwatch_paused";
     public final static String STOPWATCH_END = "service_stopwatch_end";
+    public final static String STOPWATCH_CLEAR = "service_stopwatch_clear";
 
     public final static int SERVICE_ID = 101;
 
@@ -77,6 +77,13 @@ public class StopwatchService extends Service {
 
         isEnd = intent.getBooleanExtra(STOPWATCH_END, false);
         isPaused = intent.getBooleanExtra(STOPWATCH_PAUSED, false);
+
+        if (intent.getBooleanExtra(STOPWATCH_CLEAR, false)){
+            startTime = 0L;
+            millisecondTime = 0L;
+            timeBuff = 0L;
+            updateTime = 0L;
+        }
 
 
         if (isPaused){
@@ -158,30 +165,4 @@ public class StopwatchService extends Service {
             handler.postDelayed(this, 0);
         }
     };
-
-
-
-    private void deleteNotification(){
-        mNotificationManager.cancel(505);
-    }
-
-
-    private void addNotification(){
-        mBuilder = new NotificationCompat.Builder(this)
-                .setSmallIcon(android.R.drawable.ic_notification_clear_all)
-                .setContentTitle("My notification")
-                .setContentText("Hello World!");
-        Intent resultIntent = new Intent(this, MainActivity.class);
-
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        stackBuilder.addParentStack(MainActivity.class);
-        stackBuilder.addNextIntent(resultIntent);
-        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(
-                0,
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
-        mBuilder.setContentIntent(resultPendingIntent);
-        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        mNotificationManager.notify(SERVICE_ID, mBuilder.build());
-    }
 }

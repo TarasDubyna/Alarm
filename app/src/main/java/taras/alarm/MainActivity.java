@@ -47,8 +47,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private boolean isStopwatchPaused;
     private boolean isStopwatchStopped;
 
-    private boolean isStopwatchTextClear = false;
-
     IntentFilter mIntentFilter;
     ServiceConnection serviceConnection;
     boolean bound = false;
@@ -62,7 +60,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 isStopwatchPaused = intent.getBooleanExtra(StopwatchService.STOPWATCH_PAUSED, false);
                 isStopwatchStopped = intent.getBooleanExtra(StopwatchService.STOPWATCH_END, false);
-
 
                 updateTime(updateTime);
 
@@ -110,38 +107,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (isMyServiceRunning(StopwatchService.class)){
             Intent intent = new Intent(this, StopwatchService.class);
             bindService(intent, serviceConnection, BIND_AUTO_CREATE);
-            //bindService()
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        /*
-        isStopwatchRun = (boolean) getFromSharedPreference("is_running");
-        if (isMyServiceRunning(StopwatchService.class)){
-            if (!isStopwatchRun){
-                mBtnStart.setVisibility(View.VISIBLE);
-                mBtnClear.setVisibility(View.VISIBLE);
-                mBtnLoop.setVisibility(View.GONE);
-                mBtnStop.setVisibility(View.GONE);
-                mTextTime.setText((CharSequence) getFromSharedPreference("last_value"));
-            } else {
-                mBtnStart.setVisibility(View.GONE);
-                mBtnClear.setVisibility(View.GONE);
-                mBtnLoop.setVisibility(View.VISIBLE);
-                mBtnStop.setVisibility(View.VISIBLE);
-            }
-        }*/
-
-        if (getFromSharedPreference("last_time") == null){
-            updateTime = 0;
+        if (isMyServiceRunning(StopwatchService.class)) {
+            mTextTime.setText((CharSequence) getFromSharedPreference("last_time"));
+            mBtnClear.setVisibility(View.VISIBLE);
         } else {
-            updateTime = (long) getFromSharedPreference("last_time");
+            mTextTime.setText("00:00:000");
         }
-        updateTime(updateTime);
-
         mIntentFilter = new IntentFilter();
         mIntentFilter.addAction(BROADCAST_ACTION);
         registerReceiver(broadcastReceiver, mIntentFilter);
@@ -167,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         unregisterReceiver(broadcastReceiver);
         addToSharedPreference("last_time", mTextTime.getText().toString());
         addToSharedPreference("is_paused", isStopwatchPaused);
-        //stopService(new Intent(this, StopwatchService.class));
+        addToSharedPreference("is_stopped", isStopwatchStopped);
         super.onDestroy();
     }
 
@@ -228,11 +205,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 Intent clearService = new Intent(this, StopwatchService.class);
                 isStopwatchPaused = true;
                 isStopwatchStopped = true;
+                clearService.putExtra(StopwatchService.STOPWATCH_CLEAR, true);
                 clearService.putExtra(StopwatchService.STOPWATCH_PAUSED, isStopwatchPaused);
                 clearService.putExtra(StopwatchService.STOPWATCH_END, isStopwatchStopped);
-                startService(clearService);
-                //stopService(clearService);
-                //startService(clearService);
+                stopService(clearService);
                 break;
         }
     }
@@ -240,31 +216,34 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public Object getFromSharedPreference(String type){
         SharedPreferences sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
         Object result = null;
-        switch (type){
-            case "last_value":
-                result = sharedPreferences.getString(type,"");
-                break;
-            case "is_running":
-                result = sharedPreferences.getBoolean(type,false);
-                break;
+        if (type.equals("last_time")){
+            result = sharedPreferences.getString(type,"");
+            return result;
+        } else if (type.equals("is_running")){
+            result = sharedPreferences.getBoolean(type,false);
+            return result;
+        } else {
+            return result;
         }
-        return result;
     }
     public void addToSharedPreference(String type, Object value){
         SharedPreferences sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPreferences.edit();
         switch (value.getClass().getName()){
             case "java.lang.String":
+                String text = (String) value;
                 editor.putString(type, (String) value);
+                editor.apply();
                 break;
             case "java.lang.Long":
                 editor.putLong(type, (Long) value);
+                editor.apply();
                 break;
             case "java.lang.Boolean":
                 editor.putBoolean(type, (Boolean) value);
+                editor.apply();
                 break;
         }
-        editor.apply();
     }
 
     private boolean isMyServiceRunning(Class<?> serviceClass) {
