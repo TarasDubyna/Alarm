@@ -1,51 +1,91 @@
 package taras.alarm;
 
-import android.app.Notification;
+import android.app.ActivityManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.os.SystemClock;
-import android.provider.Settings;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
+import android.content.SharedPreferences;
+import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.Chronometer;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Locale;
-import java.util.Timer;
-import java.util.TimerTask;
+import static android.view.View.GONE;
 
-public class MainActivity extends AppCompatActivity implements View.OnClickListener, Chronometer.OnChronometerTickListener {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     NotificationManager mNotificationManager;
 
 
-
-    private static final int uniqueID = 45612;
-
     TextView mTextTime;
-    Chronometer mChronometer;
 
     Button mBtnStart;
     Button mBtnStop;
     Button mBtnClear;
+    Button mBtnLoop;
 
     public final static String FILE_NAME = "filename";
 
+    public final static String BROADCAST_ACTION = "StopwatchServiceBroadcast";
+
+    long updateTime;
+    long startTime;
+    long timeBuff;
+
+    private boolean isStopwatchPaused;
+    private boolean isStopwatchStopped;
+
+    private boolean isStopwatchTextClear = false;
+
+    IntentFilter mIntentFilter;
+    ServiceConnection serviceConnection;
+    boolean bound = false;
     BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
 
+            if (intent.getAction().equals(BROADCAST_ACTION)){
+                updateTime = intent.getLongExtra(StopwatchService.UPDATE_TIME_LONG, 0);
+                timeBuff = intent.getLongExtra(StopwatchService.TIME_BUFF_LONG, 0);
+
+                isStopwatchPaused = intent.getBooleanExtra(StopwatchService.STOPWATCH_PAUSED, false);
+                isStopwatchStopped = intent.getBooleanExtra(StopwatchService.STOPWATCH_END, false);
+
+
+                updateTime(updateTime);
+
+                if (isStopwatchPaused){
+                    mBtnStart.setVisibility(View.VISIBLE);
+                    mBtnClear.setVisibility(View.VISIBLE);
+                    mBtnLoop.setVisibility(View.GONE);
+                    mBtnStop.setVisibility(View.GONE);
+                } else {
+                    mBtnStart.setVisibility(View.GONE);
+                    mBtnClear.setVisibility(View.GONE);
+                    mBtnLoop.setVisibility(View.VISIBLE);
+                    mBtnStop.setVisibility(View.VISIBLE);
+                }
+                if (isStopwatchStopped){
+                    mBtnStart.setVisibility(View.VISIBLE);
+                    mBtnClear.setVisibility(View.GONE);
+                    mBtnLoop.setVisibility(View.GONE);
+                    mBtnStop.setVisibility(View.GONE);
+                }
+            }
         }
+
     };
 
     @Override
@@ -53,20 +93,96 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         this.initViews();
+        serviceConnection = new ServiceConnection() {
+            @Override
+            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
+                Log.d("MyLogs", "MainActivity onStopwatchService connected");
+                bound = true;
+            }
+
+            @Override
+            public void onServiceDisconnected(ComponentName componentName) {
+                Log.d("MyLogs", "MainActivity onStopwatchService connected");
+                bound = false;
+            }
+        };
+
+        if (isMyServiceRunning(StopwatchService.class)){
+            Intent intent = new Intent(this, StopwatchService.class);
+            bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+            //bindService()
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        /*
+        isStopwatchRun = (boolean) getFromSharedPreference("is_running");
+        if (isMyServiceRunning(StopwatchService.class)){
+            if (!isStopwatchRun){
+                mBtnStart.setVisibility(View.VISIBLE);
+                mBtnClear.setVisibility(View.VISIBLE);
+                mBtnLoop.setVisibility(View.GONE);
+                mBtnStop.setVisibility(View.GONE);
+                mTextTime.setText((CharSequence) getFromSharedPreference("last_value"));
+            } else {
+                mBtnStart.setVisibility(View.GONE);
+                mBtnClear.setVisibility(View.GONE);
+                mBtnLoop.setVisibility(View.VISIBLE);
+                mBtnStop.setVisibility(View.VISIBLE);
+            }
+        }*/
+
+        if (getFromSharedPreference("last_time") == null){
+            updateTime = 0;
+        } else {
+            updateTime = (long) getFromSharedPreference("last_time");
+        }
+        updateTime(updateTime);
+
+        mIntentFilter = new IntentFilter();
+        mIntentFilter.addAction(BROADCAST_ACTION);
+        registerReceiver(broadcastReceiver, mIntentFilter);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        unregisterReceiver(broadcastReceiver);
+        addToSharedPreference("last_time", mTextTime.getText().toString());
+        addToSharedPreference("is_paused", isStopwatchPaused);
+        //stopService(new Intent(this, StopwatchService.class));
+        super.onDestroy();
     }
 
     private void initViews(){
 
-        mChronometer = (Chronometer) findViewById(R.id.textview_time);
-        mChronometer.setOnChronometerTickListener(this);
-
         mTextTime = (TextView) findViewById(R.id.textview_time);
+
         mBtnStart = (Button) findViewById(R.id.btn_start);
-        mBtnClear = (Button) findViewById(R.id.btn_clear);
         mBtnStop = (Button) findViewById(R.id.btn_stop);
+        mBtnLoop = (Button) findViewById(R.id.btn_loop);
+        mBtnClear = (Button) findViewById(R.id.btn_clear);
 
         mBtnStart.setOnClickListener(this);
         mBtnClear.setOnClickListener(this);
+        mBtnLoop.setOnClickListener(this);
         mBtnStop.setOnClickListener(this);
     }
 
@@ -74,62 +190,105 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View view) {
         switch (view.getId()){
             case R.id.btn_start:
-                mChronometer.setBase(SystemClock.elapsedRealtime());
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-
-                    }
-                });
-                addNotification();
-                break;
-            case R.id.btn_clear:
-                mChronometer.setBase(SystemClock.elapsedRealtime());
+                mBtnStart.setVisibility(View.GONE);
+                mBtnClear.setVisibility(View.GONE);
+                mBtnStop.setVisibility(View.VISIBLE);
+                mBtnLoop.setVisibility(View.VISIBLE);
+                Intent startService = new Intent(this, StopwatchService.class);
+                if (timeBuff != 0){
+                    startService.putExtra(StopwatchService.TIME_BUFF_LONG, startTime);
+                }
+                if (!isMyServiceRunning(StopwatchService.class)){
+                    startService(startService);
+                } else {
+                    startService.putExtra(StopwatchService.STOPWATCH_PAUSED, false);
+                    startService(startService);
+                }
+                isStopwatchPaused = false;
+                isStopwatchStopped = false;
                 break;
             case R.id.btn_stop:
-                mChronometer.stop();
-                mNotificationManager.cancel(0);
+                addToSharedPreference("last_value", mTextTime.getText().toString());
+                Intent pauseService = new Intent(this, StopwatchService.class);
+                pauseService.putExtra(StopwatchService.STOPWATCH_PAUSED, true);
+                if (mTextTime.getText().equals(getResources().getString(R.string.default_time))){
+                    pauseService.putExtra(StopwatchService.STOPWATCH_END, true);
+                }
+                startService(pauseService);
+
+                isStopwatchStopped = false;
+                isStopwatchPaused = true;
+                break;
+            case R.id.btn_loop:
+                Toast.makeText(this, "Take loop!", Toast.LENGTH_SHORT).show();
+                break;
+            case R.id.btn_clear:
+                mBtnClear.setVisibility(GONE);
+                mTextTime.setText(getResources().getString(R.string.default_time));
+                Intent clearService = new Intent(this, StopwatchService.class);
+                isStopwatchPaused = true;
+                isStopwatchStopped = true;
+                clearService.putExtra(StopwatchService.STOPWATCH_PAUSED, isStopwatchPaused);
+                clearService.putExtra(StopwatchService.STOPWATCH_END, isStopwatchStopped);
+                startService(clearService);
+                //stopService(clearService);
+                //startService(clearService);
                 break;
         }
     }
 
-    @Override
-    public void onChronometerTick(Chronometer chronometer) {
-        long elapsedMillis = SystemClock.elapsedRealtime()
-                - mChronometer.getBase();
-
-        if (elapsedMillis > 5000) {
-            String strElapsedMillis = "Прошло больше 5 секунд";
-            Toast.makeText(getApplicationContext(),
-                    strElapsedMillis, Toast.LENGTH_SHORT)
-                    .show();
+    public Object getFromSharedPreference(String type){
+        SharedPreferences sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
+        Object result = null;
+        switch (type){
+            case "last_value":
+                result = sharedPreferences.getString(type,"");
+                break;
+            case "is_running":
+                result = sharedPreferences.getBoolean(type,false);
+                break;
         }
+        return result;
+    }
+    public void addToSharedPreference(String type, Object value){
+        SharedPreferences sharedPreferences = this.getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        switch (value.getClass().getName()){
+            case "java.lang.String":
+                editor.putString(type, (String) value);
+                break;
+            case "java.lang.Long":
+                editor.putLong(type, (Long) value);
+                break;
+            case "java.lang.Boolean":
+                editor.putBoolean(type, (Boolean) value);
+                break;
+        }
+        editor.apply();
     }
 
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    private void addNotification(){
-        NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
-                .setSmallIcon(android.R.drawable.ic_notification_clear_all)
-                .setContentTitle("My notification")
-                .setContentText("Hello World!")
-                .setAutoCancel(false);
-
-        Intent resultIntent = new Intent(this, MainActivity.class);
-        resultIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        this.getApplicationContext().startActivity(resultIntent);
-
-        TaskStackBuilder stackBuilder = TaskStackBuilder.create(this);
-        stackBuilder.addParentStack(MainActivity.class);
-        stackBuilder.addNextIntent(resultIntent);
-
-        PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(
-                0,
-                PendingIntent.FLAG_UPDATE_CURRENT
-        );
-        mBuilder.setContentIntent(resultPendingIntent);
-
-        mNotificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        mNotificationManager.notify(0, mBuilder.build());
+    private void updateTime(long updateTime){
+        String time;
+        if (updateTime == 0){
+            time = getResources().getString(R.string.default_time);
+        } else {
+            int seconds = (int) (updateTime / 1000);
+            int minutes = seconds / 60;
+            seconds = seconds % 60;
+            int milliSeconds = (int) (updateTime % 1000);
+            time = String.format("%02d:%02d:%02d", minutes, seconds, milliSeconds);
+        }
+        mTextTime.setText(time);
     }
 
 }
