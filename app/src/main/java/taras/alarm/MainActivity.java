@@ -19,8 +19,15 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+
+import taras.alarm.Adapter.StopwatchListAdapter;
 
 import static android.view.View.GONE;
 
@@ -35,6 +42,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Button mBtnStop;
     Button mBtnClear;
     Button mBtnLoop;
+
+    ListView mListView;
+    StopwatchListAdapter adapter;
+    ArrayList<Long> loopTimeList;
+    ArrayList<Long> intervalTimeList;
 
     public final static String FILE_NAME = "filename";
 
@@ -157,6 +169,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mBtnLoop = (Button) findViewById(R.id.btn_loop);
         mBtnClear = (Button) findViewById(R.id.btn_clear);
 
+        mListView = (ListView) findViewById(R.id.stopwatch_listview);
+        loopTimeList = new ArrayList<>();
+        intervalTimeList = new ArrayList<>();
+        adapter = new StopwatchListAdapter(this, loopTimeList);
+        mListView.setAdapter(adapter);
+
         mBtnStart.setOnClickListener(this);
         mBtnClear.setOnClickListener(this);
         mBtnLoop.setOnClickListener(this);
@@ -198,13 +216,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 break;
             case R.id.btn_loop:
                 Toast.makeText(this, "Take loop!", Toast.LENGTH_SHORT).show();
+                //loopTimeList.add(updateTime);
+                //loopTimeList.add(0, updateTime);
+                loopTimeList.add(updateTime);
+                adapter.notifyDataSetChanged();
                 break;
             case R.id.btn_clear:
                 mBtnClear.setVisibility(GONE);
                 mTextTime.setText(getResources().getString(R.string.default_time));
-                Intent clearService = new Intent(this, StopwatchService.class);
+
+                intervalTimeList.clear();
+                loopTimeList.clear();
+                adapter.notifyDataSetChanged();
+
                 isStopwatchPaused = true;
                 isStopwatchStopped = true;
+
+                Intent clearService = new Intent(this, StopwatchService.class);
                 clearService.putExtra(StopwatchService.STOPWATCH_CLEAR, true);
                 clearService.putExtra(StopwatchService.STOPWATCH_PAUSED, isStopwatchPaused);
                 clearService.putExtra(StopwatchService.STOPWATCH_END, isStopwatchStopped);

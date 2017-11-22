@@ -8,8 +8,11 @@
     android:orientation="vertical">
     <TextView
         android:id="@+id/textview_time"
-        android:textSize="40sp"
+        android:textSize="50sp"
         android:text="00:00:000"
+        android:layout_marginLeft="15dp"
+        android:layout_marginRight="15dp"
+        android:layout_marginTop="15dp"
         android:gravity="center_horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
@@ -51,5 +54,12 @@
             android:layout_height="wrap_content"
             android:visibility="gone"/>
     </LinearLayout>
+    <ListView
+        android:id="@+id/stopwatch_listview"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:stackFromBottom="true"
+        android:transcriptMode="normal">
+    </ListView>
 
 </LinearLayout>

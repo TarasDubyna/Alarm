@@ -151,7 +151,6 @@ public class StopwatchService extends Service {
 
 
             mBuilder.setContentText(time);
-
             notification = mBuilder.build();
             startForeground(SERVICE_ID, notification);
 
